@@ -1677,6 +1677,16 @@ impl_runtime_apis! {
             SubtensorModule::get_network_lock_cost()
         }
     }
+
+    #[cfg(feature = "std")]
+    impl subtensor_custom_rpc_runtime_api::SubtensorEpochRuntimeApi<Block> for Runtime {
+        fn get_subtensor_epoch(netuid: u16, incentive: Option<bool>) -> Vec<u8> {
+            let _result = SubtensorModule::epoch(netuid, incentive);
+            println!("epoch_result: {:?}", _result);
+            let result = _result.expect("Could not get SubtensorEpoch");
+                result.encode()
+        }
+    }
 }
 
 // #[cfg(test)]

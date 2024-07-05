@@ -44,3 +44,7 @@ bt.snap
 
 # localnet spec
 scripts/specs/local.json
+pytest/include
+pytest/lib
+pytest/bin
+pytest/lib64

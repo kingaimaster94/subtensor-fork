@@ -179,8 +179,8 @@ impl<T: Config> Pallet<T> {
             PendingEmission::<T>::insert(netuid, 0);
 
             // --- 8. Run the epoch mechanism and return emission tuples for hotkeys in the network.
-            Self::set_emission_values(&[netuid], vec![emission_to_drain])
-                .expect("Failed to set emission values");
+            // Self::set_emission_values(&[netuid], vec![emission_to_drain])
+            //     .expect("Failed to set emission values");
             let emission_tuples_this_block: Vec<(T::AccountId, u64, u64)> =
                 Self::epoch(netuid, Some(false)).expect("Failed to obtain epoch results");
             log::debug!(

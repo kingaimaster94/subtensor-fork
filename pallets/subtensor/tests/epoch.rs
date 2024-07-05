@@ -198,7 +198,7 @@ fn init_run_epochs(
         SubtensorModule::get_max_allowed_validators(netuid),
         validators.len() as u16
     );
-    SubtensorModule::epoch(netuid, 1_000_000_000); // run first epoch to set allowed validators
+    SubtensorModule::epoch(netuid, Some(false)).expect("Failed to Epoch"); // run first epoch to set allowed validators
     run_to_block(1); // run to next block to ensure weights are set on nodes after their registration block
 
     // === Set weights
@@ -249,7 +249,7 @@ fn init_run_epochs(
     let start = Instant::now();
     for _ in 0..epochs {
         if sparse {
-            SubtensorModule::epoch(netuid, 1_000_000_000);
+            SubtensorModule::epoch(netuid, Some(false)).expect("Failed to Epoch");
         } else {
             SubtensorModule::epoch_dense(netuid, 1_000_000_000);
         }
@@ -582,7 +582,7 @@ fn test_1_graph() {
             SubtensorModule::get_subnet_emission_value(netuid),
             1_000_000_000
         );
-        SubtensorModule::epoch(netuid, 1_000_000_000);
+        SubtensorModule::epoch(netuid, Some(false)).expect("Failed to Epoch");
         assert_eq!(
             SubtensorModule::get_total_stake_for_hotkey(&hotkey),
             stake_amount
@@ -644,7 +644,7 @@ fn test_10_graph() {
             ));
         }
         // Run the epoch.
-        SubtensorModule::epoch(netuid, 1_000_000_000);
+        SubtensorModule::epoch(netuid, Some(false)).expect("Failed to Epoch");
         // Check return values.
         for i in 0..n {
             assert_eq!(
@@ -1010,14 +1010,14 @@ fn test_bonds() {
 		// === Issue validator permits
 		SubtensorModule::set_max_allowed_validators(netuid, n);
 		assert_eq!( SubtensorModule::get_max_allowed_validators(netuid), n);
-		SubtensorModule::epoch( netuid, 1_000_000_000 ); // run first epoch to set allowed validators
+		SubtensorModule::epoch(netuid, Some(false)).expect("Failed to Epoch"); // run first epoch to set allowed validators
         next_block(); // run to next block to ensure weights are set on nodes after their registration block
 
 		// === Set weights [val->srv1: 0.1, val->srv2: 0.2, val->srv3: 0.3, val->srv4: 0.4]
 		for uid in 0..(n/2) as u64 {
 			assert_ok!(SubtensorModule::set_weights(RuntimeOrigin::signed(U256::from(uid)), netuid, ((n/2)..n).collect(), vec![ u16::MAX/4, u16::MAX/2, (u16::MAX/4)*3, u16::MAX], 0));
 		}
-		if sparse { SubtensorModule::epoch( netuid, 1_000_000_000 ); }
+		if sparse { SubtensorModule::epoch(netuid, Some(false)).expect("Failed to Epoch"); }
 		else { SubtensorModule::epoch_dense( netuid, 1_000_000_000 ); }
 		/*  n: 8
 			current_block: 1; activity_cutoff: 5000; Last update: [1, 1, 1, 1, 0, 0, 0, 0]
@@ -1062,7 +1062,7 @@ fn test_bonds() {
 		let uid = 0;
 		assert_ok!(SubtensorModule::set_weights(RuntimeOrigin::signed(U256::from(uid)), netuid, vec![uid], vec![u16::MAX], 0));
         next_block();
-		if sparse { SubtensorModule::epoch( netuid, 1_000_000_000 ); }
+		if sparse { SubtensorModule::epoch(netuid, Some(false)).expect("Failed to Epoch"); }
 		else { SubtensorModule::epoch_dense( netuid, 1_000_000_000 ); }
 		/*  n: 8
 			current_block: 2
@@ -1109,7 +1109,7 @@ fn test_bonds() {
 		let uid = 1;
 		assert_ok!(SubtensorModule::set_weights(RuntimeOrigin::signed(U256::from(uid)), netuid, vec![uid], vec![u16::MAX], 0));
         next_block();
-		if sparse { SubtensorModule::epoch( netuid, 1_000_000_000 ); }
+		if sparse { SubtensorModule::epoch(netuid, Some(false)).expect("Failed to Epoch"); }
 		else { SubtensorModule::epoch_dense( netuid, 1_000_000_000 ); }
 		/*  current_block: 3
 			W: [[(0, 65535)], [(1, 65535)], [(4, 16383), (5, 32767), (6, 49149), (7, 65535)], [(4, 16383), (5, 32767), (6, 49149), (7, 65535)], [], [], [], []]
@@ -1145,7 +1145,7 @@ fn test_bonds() {
 		let uid = 2;
 		assert_ok!(SubtensorModule::set_weights(RuntimeOrigin::signed(U256::from(uid)), netuid, vec![uid], vec![u16::MAX], 0));
         next_block();
-		if sparse { SubtensorModule::epoch( netuid, 1_000_000_000 ); }
+		if sparse { SubtensorModule::epoch(netuid, Some(false)).expect("Failed to Epoch"); }
 		else { SubtensorModule::epoch_dense( netuid, 1_000_000_000 ); }
 		/*  current_block: 4
 			W: [[(0, 65535)], [(1, 65535)], [(2, 65535)], [(4, 16383), (5, 32767), (6, 49149), (7, 65535)], [], [], [], []]
@@ -1180,7 +1180,7 @@ fn test_bonds() {
 		// === Set val3->srv4: 1
 		assert_ok!(SubtensorModule::set_weights(RuntimeOrigin::signed(U256::from(2)), netuid, vec![7], vec![u16::MAX], 0));
         next_block();
-		if sparse { SubtensorModule::epoch( netuid, 1_000_000_000 ); }
+		if sparse { SubtensorModule::epoch(netuid, Some(false)).expect("Failed to Epoch"); }
 		else { SubtensorModule::epoch_dense( netuid, 1_000_000_000 ); }
 		/*  current_block: 5
 			W: [[(0, 65535)], [(1, 65535)], [(7, 65535)], [(4, 16383), (5, 32767), (6, 49149), (7, 65535)], [], [], [], []]
@@ -1213,7 +1213,7 @@ fn test_bonds() {
 		assert_eq!(bonds[3][7], 65535);
 
         next_block();
-		if sparse { SubtensorModule::epoch( netuid, 1_000_000_000 ); }
+		if sparse { SubtensorModule::epoch(netuid, Some(false)).expect("Failed to Epoch"); }
 		else { SubtensorModule::epoch_dense( netuid, 1_000_000_000 ); }
 		/*  current_block: 6
 			B: [[(4, 12601), (5, 12601), (6, 12601), (7, 10951)], [(4, 28319), (5, 28319), (6, 28319), (7, 24609)], [(4, 49149), (5, 49149), (6, 49149), (7, 49150)], [(4, 65535), (5, 65535), (6, 65535), (7, 65535)], [], [], [], []]
@@ -1234,7 +1234,7 @@ fn test_bonds() {
 		assert_eq!(bonds[3][7], 65535);
 
         next_block();
-		if sparse { SubtensorModule::epoch( netuid, 1_000_000_000 ); }
+		if sparse { SubtensorModule::epoch(netuid, Some(false)).expect("Failed to Epoch"); }
 		else { SubtensorModule::epoch_dense( netuid, 1_000_000_000 ); }
 		/*  current_block: 7
 			B: [[(4, 12600), (5, 12600), (6, 12600), (7, 9559)], [(4, 28318), (5, 28318), (6, 28318), (7, 21482)], [(4, 49148), (5, 49148), (6, 49148), (7, 49150)], [(4, 65535), (5, 65535), (6, 65535), (7, 65535)], [], [], [], []]
@@ -1255,7 +1255,7 @@ fn test_bonds() {
 		assert_eq!(bonds[3][7], 65535);
 
 		next_block();
-		if sparse { SubtensorModule::epoch( netuid, 1_000_000_000 ); }
+		if sparse { SubtensorModule::epoch(netuid, Some(false)).expect("Failed to Epoch"); }
 		else { SubtensorModule::epoch_dense( netuid, 1_000_000_000 ); }
 		/*  current_block: 8
 			B: [[(4, 12599), (5, 12599), (6, 12599), (7, 8376)], [(4, 28317), (5, 28317), (6, 28317), (7, 18824)], [(4, 49147), (5, 49147), (6, 49147), (7, 49150)], [(4, 65535), (5, 65535), (6, 65535), (7, 65535)], [], [], [], []]
@@ -1316,7 +1316,7 @@ fn test_bonds_with_liquid_alpha() {
         }
 
         // Initilize with first epoch
-        SubtensorModule::epoch(netuid, 1_000_000_000);
+        SubtensorModule::epoch(netuid, Some(false)).expect("Failed to Epoch");
         next_block();
 
         // Set weights
@@ -1335,7 +1335,7 @@ fn test_bonds_with_liquid_alpha() {
         SubtensorModule::set_liquid_alpha_enabled(netuid, true);
         // Run epoch with Liquid Alpha
         if sparse {
-            SubtensorModule::epoch(netuid, 1_000_000_000);
+            SubtensorModule::epoch(netuid, Some(false)).expect("Failed to Epoch");
         } else {
             SubtensorModule::epoch_dense(netuid, 1_000_000_000);
         }
@@ -1410,7 +1410,7 @@ fn test_bonds_with_liquid_alpha() {
         ));
         next_block();
         if sparse {
-            SubtensorModule::epoch(netuid, 1_000_000_000);
+            SubtensorModule::epoch(netuid, Some(false)).expect("Failed to Epoch");
         } else {
             SubtensorModule::epoch_dense(netuid, 1_000_000_000);
         }
@@ -1432,7 +1432,7 @@ fn test_bonds_with_liquid_alpha() {
         ));
         next_block();
         if sparse {
-            SubtensorModule::epoch(netuid, 1_000_000_000);
+            SubtensorModule::epoch(netuid, Some(false)).expect("Failed to Epoch");
         } else {
             SubtensorModule::epoch_dense(netuid, 1_000_000_000);
         }
@@ -1569,7 +1569,7 @@ fn test_active_stake() {
         // === Issue validator permits
         SubtensorModule::set_max_allowed_validators(netuid, n);
         assert_eq!(SubtensorModule::get_max_allowed_validators(netuid), n);
-        SubtensorModule::epoch(netuid, 1_000_000_000); // run first epoch to set allowed validators
+        SubtensorModule::epoch(netuid, Some(false)).expect("Failed to Epoch"); // run first epoch to set allowed validators
         next_block(); // run to next block to ensure weights are set on nodes after their registration block
 
         // === Set weights [val1->srv1: 0.5, val1->srv2: 0.5, val2->srv1: 0.5, val2->srv2: 0.5]
@@ -1583,7 +1583,7 @@ fn test_active_stake() {
             ));
         }
         if sparse {
-            SubtensorModule::epoch(netuid, 1_000_000_000);
+            SubtensorModule::epoch(netuid, Some(false)).expect("Failed to Epoch");
         } else {
             SubtensorModule::epoch_dense(netuid, 1_000_000_000);
         }
@@ -1622,7 +1622,7 @@ fn test_active_stake() {
             0
         ));
         if sparse {
-            SubtensorModule::epoch(netuid, 1_000_000_000);
+            SubtensorModule::epoch(netuid, Some(false)).expect("Failed to Epoch");
         } else {
             SubtensorModule::epoch_dense(netuid, 1_000_000_000);
         }
@@ -1683,7 +1683,7 @@ fn test_active_stake() {
         ));
         run_to_block(activity_cutoff + 3); // run to block where validator (uid 0, 1) weights become outdated
         if sparse {
-            SubtensorModule::epoch(netuid, 1_000_000_000);
+            SubtensorModule::epoch(netuid, Some(false)).expect("Failed to Epoch");
         } else {
             SubtensorModule::epoch_dense(netuid, 1_000_000_000);
         }
@@ -1776,7 +1776,7 @@ fn test_outdated_weights() {
         // === Issue validator permits
         SubtensorModule::set_max_allowed_validators(netuid, n);
         assert_eq!(SubtensorModule::get_max_allowed_validators(netuid), n);
-        SubtensorModule::epoch(netuid, 1_000_000_000); // run first epoch to set allowed validators
+        SubtensorModule::epoch(netuid, Some(false)).expect("Failed to Epoch"); // run first epoch to set allowed validators
         assert_eq!(SubtensorModule::get_registrations_this_block(netuid), 4);
         block_number = next_block(); // run to next block to ensure weights are set on nodes after their registration block
         assert_eq!(SubtensorModule::get_registrations_this_block(netuid), 0);
@@ -1801,7 +1801,7 @@ fn test_outdated_weights() {
             )); // server self-weight
         }
         if sparse {
-            SubtensorModule::epoch(netuid, 1_000_000_000);
+            SubtensorModule::epoch(netuid, Some(false)).expect("Failed to Epoch");
         } else {
             SubtensorModule::epoch_dense(netuid, 1_000_000_000);
         }
@@ -1870,7 +1870,7 @@ fn test_outdated_weights() {
             0
         ));
         if sparse {
-            SubtensorModule::epoch(netuid, 1_000_000_000);
+            SubtensorModule::epoch(netuid, Some(false)).expect("Failed to Epoch");
         } else {
             SubtensorModule::epoch_dense(netuid, 1_000_000_000);
         }
@@ -1960,7 +1960,7 @@ fn test_zero_weights() {
 
         // === No weights
         if sparse {
-            SubtensorModule::epoch(netuid, 1_000_000_000);
+            SubtensorModule::epoch(netuid, Some(false)).expect("Failed to Epoch");
         } else {
             SubtensorModule::epoch_dense(netuid, 1_000_000_000);
         }
@@ -1995,7 +1995,7 @@ fn test_zero_weights() {
             )); // server self-weight
         }
         if sparse {
-            SubtensorModule::epoch(netuid, 1_000_000_000);
+            SubtensorModule::epoch(netuid, Some(false)).expect("Failed to Epoch");
         } else {
             SubtensorModule::epoch_dense(netuid, 1_000_000_000);
         }
@@ -2051,7 +2051,7 @@ fn test_zero_weights() {
             ));
         }
         if sparse {
-            SubtensorModule::epoch(netuid, 1_000_000_000);
+            SubtensorModule::epoch(netuid, Some(false)).expect("Failed to Epoch");
         } else {
             SubtensorModule::epoch_dense(netuid, 1_000_000_000);
         }
@@ -2085,7 +2085,7 @@ fn test_zero_weights() {
             ));
         }
         if sparse {
-            SubtensorModule::epoch(netuid, 1_000_000_000);
+            SubtensorModule::epoch(netuid, Some(false)).expect("Failed to Epoch");
         } else {
             SubtensorModule::epoch_dense(netuid, 1_000_000_000);
         }
@@ -2180,7 +2180,7 @@ fn test_validator_permits() {
                         SubtensorModule::get_max_allowed_validators(netuid),
                         validators_n as u16
                     );
-                    SubtensorModule::epoch(netuid, 1_000_000_000); // run first epoch to set allowed validators
+                    SubtensorModule::epoch(netuid, Some(false)).expect("Failed to Epoch"); // run first epoch to set allowed validators
                     for validator in &validators {
                         assert_eq!(
                             correct,
@@ -2209,7 +2209,7 @@ fn test_validator_permits() {
 
                     // === Update validator permits
                     run_to_block(1);
-                    SubtensorModule::epoch(netuid, 1_000_000_000);
+                    SubtensorModule::epoch(netuid, Some(false)).expect("Failed to Epoch");
 
                     // === Check that servers now own permits instead of the validator uids
                     for validator in &validators {

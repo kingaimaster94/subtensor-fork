@@ -953,7 +953,8 @@ impl<T: Config> Pallet<T> {
         }
 
         // Compute rao based emission scores. range: I96F32(0, rao_emission)
-        let rao_emission: u64 = Self::get_emission_value(netuid);
+        // let rao_emission: u64 = Self::get_emission_value(netuid);
+        let rao_emission: u64 = 1_000_000_000;
         let float_rao_emission: I96F32 = I96F32::from_num(rao_emission);
 
         let server_emission: Vec<I96F32> = normalized_server_emission
