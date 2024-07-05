@@ -334,6 +334,375 @@ impl<T: Config> Pallet<T> {
             .collect()
     }
 
+    // /// Calculates reward consensus values, then updates rank, trust, consensus, incentive, dividend, pruning_score, emission and bonds, and
+    // /// returns the emissions for uids/hotkeys in a given `netuid`.
+    // ///
+    // /// # Args:
+    // ///  * 'netuid': ( u16 ):
+    // ///     - The network to distribute the emission onto.
+    // ///
+    // ///  * 'rao_emission': ( u64 ):
+    // ///     - The total emission for the epoch.
+    // ///
+    // ///  * 'debug' ( bool ):
+    // ///     - Print debugging outputs.
+    // ///
+    // #[allow(clippy::indexing_slicing)]
+    // pub fn epoch(netuid: u16, rao_emission: u64) -> Vec<(T::AccountId, u64, u64)> {
+    //     // Get subnetwork size.
+    //     let n: u16 = Self::get_subnetwork_n(netuid);
+    //     log::trace!("Number of Neurons in Network: {:?}", n);
+
+    //     // ======================
+    //     // == Active & updated ==
+    //     // ======================
+
+    //     // Get current block.
+    //     let current_block: u64 = Self::get_current_block_as_u64();
+    //     log::trace!("current_block: {:?}", current_block);
+
+    //     // Get activity cutoff.
+    //     let activity_cutoff: u64 = Self::get_activity_cutoff(netuid) as u64;
+    //     log::trace!("activity_cutoff: {:?}", activity_cutoff);
+
+    //     // Last update vector.
+    //     let last_update: Vec<u64> = Self::get_last_update(netuid);
+    //     log::trace!("Last update: {:?}", &last_update);
+
+    //     // Inactive mask.
+    //     let inactive: Vec<bool> = last_update
+    //         .iter()
+    //         .map(|updated| updated.saturating_add(activity_cutoff) < current_block)
+    //         .collect();
+    //     log::trace!("Inactive: {:?}", inactive.clone());
+
+    //     // Logical negation of inactive.
+    //     let active: Vec<bool> = inactive.iter().map(|&b| !b).collect();
+
+    //     // Block at registration vector (block when each neuron was most recently registered).
+    //     let block_at_registration: Vec<u64> = Self::get_block_at_registration(netuid);
+    //     log::trace!("Block at registration: {:?}", &block_at_registration);
+
+    //     // ===========
+    //     // == Stake ==
+    //     // ===========
+
+    //     let hotkeys: Vec<(u16, T::AccountId)> =
+    //         <Keys<T> as IterableStorageDoubleMap<u16, u16, T::AccountId>>::iter_prefix(netuid)
+    //             .collect();
+    //     log::trace!("hotkeys: {:?}", &hotkeys);
+
+    //     // Access network stake as normalized vector.
+    //     let mut stake_64: Vec<I64F64> = vec![I64F64::from_num(0.0); n as usize];
+    //     for (uid_i, hotkey) in &hotkeys {
+    //         stake_64[*uid_i as usize] = I64F64::from_num(Self::get_total_stake_for_hotkey(hotkey));
+    //     }
+    //     log::trace!("Stake : {:?}", &stake_64);
+    //     inplace_normalize_64(&mut stake_64);
+    //     let stake: Vec<I32F32> = vec_fixed64_to_fixed32(stake_64);
+    //     // range: I32F32(0, 1)
+    //     log::trace!("Normalised Stake: {:?}", &stake);
+
+    //     // =======================
+    //     // == Validator permits ==
+    //     // =======================
+
+    //     // Get current validator permits.
+    //     let validator_permits: Vec<bool> = Self::get_validator_permit(netuid);
+    //     log::trace!("validator_permits: {:?}", validator_permits);
+
+    //     // Logical negation of validator_permits.
+    //     let validator_forbids: Vec<bool> = validator_permits.iter().map(|&b| !b).collect();
+
+    //     // Get max allowed validators.
+    //     let max_allowed_validators: u16 = Self::get_max_allowed_validators(netuid);
+    //     log::trace!("max_allowed_validators: {:?}", max_allowed_validators);
+
+    //     // Get new validator permits.
+    //     let new_validator_permits: Vec<bool> = is_topk(&stake, max_allowed_validators as usize);
+    //     log::trace!("new_validator_permits: {:?}", new_validator_permits);
+
+    //     // ==================
+    //     // == Active Stake ==
+    //     // ==================
+
+    //     let mut active_stake: Vec<I32F32> = stake.clone();
+
+    //     // Remove inactive stake.
+    //     inplace_mask_vector(&inactive, &mut active_stake);
+
+    //     // Remove non-validator stake.
+    //     inplace_mask_vector(&validator_forbids, &mut active_stake);
+
+    //     // Normalize active stake.
+    //     inplace_normalize(&mut active_stake);
+    //     log::trace!("Active Stake:\n{:?}\n", &active_stake);
+
+    //     // =============
+    //     // == Weights ==
+    //     // =============
+
+    //     // Access network weights row unnormalized.
+    //     let mut weights: Vec<Vec<(u16, I32F32)>> = Self::get_weights_sparse(netuid);
+    //     log::trace!("Weights: {:?}", &weights);
+
+    //     // Mask weights that are not from permitted validators.
+    //     weights = mask_rows_sparse(&validator_forbids, &weights);
+    //     log::trace!("Weights (permit): {:?}", &weights);
+
+    //     // Remove self-weight by masking diagonal.
+    //     weights = mask_diag_sparse(&weights);
+    //     log::trace!("Weights (permit+diag): {:?}", &weights);
+
+    //     // Remove weights referring to deregistered neurons.
+    //     weights = vec_mask_sparse_matrix(
+    //         &weights,
+    //         &last_update,
+    //         &block_at_registration,
+    //         &|updated, registered| updated <= registered,
+    //     );
+    //     log::trace!("Weights (permit+diag+outdate): {:?}", &weights);
+
+    //     // Normalize remaining weights.
+    //     inplace_row_normalize_sparse(&mut weights);
+    //     log::trace!("Weights (mask+norm): {:?}", &weights);
+
+    //     // ================================
+    //     // == Consensus, Validator Trust ==
+    //     // ================================
+
+    //     // Compute preranks: r_j = SUM(i) w_ij * s_i
+    //     let preranks: Vec<I32F32> = matmul_sparse(&weights, &active_stake, n);
+    //     log::trace!("Ranks (before): {:?}", &preranks);
+
+    //     // Clip weights at majority consensus
+    //     let kappa: I32F32 = Self::get_float_kappa(netuid); // consensus majority ratio, e.g. 51%.
+    //     let consensus: Vec<I32F32> = weighted_median_col_sparse(&active_stake, &weights, n, kappa);
+    //     log::trace!("Consensus: {:?}", &consensus);
+
+    //     weights = col_clip_sparse(&weights, &consensus);
+    //     log::trace!("Weights: {:?}", &weights);
+
+    //     let validator_trust: Vec<I32F32> = row_sum_sparse(&weights);
+    //     log::trace!("Validator Trust: {:?}", &validator_trust);
+
+    //     // =============================
+    //     // == Ranks, Trust, Incentive ==
+    //     // =============================
+
+    //     // Compute ranks: r_j = SUM(i) w_ij * s_i.
+    //     let mut ranks: Vec<I32F32> = matmul_sparse(&weights, &active_stake, n);
+    //     log::trace!("Ranks (after): {:?}", &ranks);
+
+    //     // Compute server trust: ratio of rank after vs. rank before.
+    //     let trust: Vec<I32F32> = vecdiv(&ranks, &preranks); // range: I32F32(0, 1)
+    //     log::trace!("T: {:?}", &trust);
+
+    //     inplace_normalize(&mut ranks); // range: I32F32(0, 1)
+    //     let incentive: Vec<I32F32> = ranks.clone();
+    //     log::trace!("Incentive (=Rank): {:?}", &incentive);
+
+    //     // =========================
+    //     // == Bonds and Dividends ==
+    //     // =========================
+
+    //     // Access network bonds.
+    //     let mut bonds: Vec<Vec<(u16, I32F32)>> = Self::get_bonds_sparse(netuid);
+    //     log::trace!("B: {:?}", &bonds);
+
+    //     // Remove bonds referring to deregistered neurons.
+    //     bonds = vec_mask_sparse_matrix(
+    //         &bonds,
+    //         &last_update,
+    //         &block_at_registration,
+    //         &|updated, registered| updated <= registered,
+    //     );
+    //     log::trace!("B (outdatedmask): {:?}", &bonds);
+
+    //     // Normalize remaining bonds: sum_i b_ij = 1.
+    //     inplace_col_normalize_sparse(&mut bonds, n);
+    //     log::trace!("B (mask+norm): {:?}", &bonds);
+
+    //     // Compute bonds delta column normalized.
+    //     let mut bonds_delta: Vec<Vec<(u16, I32F32)>> = row_hadamard_sparse(&weights, &active_stake); // ΔB = W◦S (outdated W masked)
+    //     log::trace!("ΔB: {:?}", &bonds_delta);
+
+    //     // Normalize bonds delta.
+    //     inplace_col_normalize_sparse(&mut bonds_delta, n); // sum_i b_ij = 1
+    //     log::trace!("ΔB (norm): {:?}", &bonds_delta);
+
+    //     // Compute the Exponential Moving Average (EMA) of bonds.
+    //     let mut ema_bonds =
+    //         Self::compute_ema_bonds_sparse(netuid, consensus.clone(), bonds_delta, bonds);
+    //     // Normalize EMA bonds.
+    //     inplace_col_normalize_sparse(&mut ema_bonds, n); // sum_i b_ij = 1
+    //     log::trace!("Exponential Moving Average Bonds: {:?}", &ema_bonds);
+
+    //     // Compute dividends: d_i = SUM(j) b_ij * inc_j.
+    //     // range: I32F32(0, 1)
+    //     let mut dividends: Vec<I32F32> = matmul_transpose_sparse(&ema_bonds, &incentive);
+    //     inplace_normalize(&mut dividends);
+    //     log::trace!("Dividends: {:?}", &dividends);
+
+    //     // =================================
+    //     // == Emission and Pruning scores ==
+    //     // =================================
+
+    //     // Compute normalized emission scores. range: I32F32(0, 1)
+    //     let combined_emission: Vec<I32F32> = incentive
+    //         .iter()
+    //         .zip(dividends.clone())
+    //         .map(|(ii, di)| ii.saturating_add(di))
+    //         .collect();
+    //     let emission_sum: I32F32 = combined_emission.iter().sum();
+
+    //     let mut normalized_server_emission: Vec<I32F32> = incentive.clone(); // Servers get incentive.
+    //     let mut normalized_validator_emission: Vec<I32F32> = dividends.clone(); // Validators get dividends.
+    //     let mut normalized_combined_emission: Vec<I32F32> = combined_emission.clone();
+    //     // Normalize on the sum of incentive + dividends.
+    //     inplace_normalize_using_sum(&mut normalized_server_emission, emission_sum);
+    //     inplace_normalize_using_sum(&mut normalized_validator_emission, emission_sum);
+    //     inplace_normalize(&mut normalized_combined_emission);
+
+    //     // If emission is zero, replace emission with normalized stake.
+    //     if emission_sum == I32F32::from(0) {
+    //         // no weights set | outdated weights | self_weights
+    //         if is_zero(&active_stake) {
+    //             // no active stake
+    //             normalized_validator_emission.clone_from(&stake); // do not mask inactive, assumes stake is normalized
+    //             normalized_combined_emission.clone_from(&stake);
+    //         } else {
+    //             normalized_validator_emission.clone_from(&active_stake); // emission proportional to inactive-masked normalized stake
+    //             normalized_combined_emission.clone_from(&active_stake);
+    //         }
+    //     }
+
+    //     // Compute rao based emission scores. range: I96F32(0, rao_emission)
+    //     let float_rao_emission: I96F32 = I96F32::from_num(rao_emission);
+
+    //     let server_emission: Vec<I96F32> = normalized_server_emission
+    //         .iter()
+    //         .map(|se: &I32F32| I96F32::from_num(*se).saturating_mul(float_rao_emission))
+    //         .collect();
+    //     let server_emission: Vec<u64> = server_emission
+    //         .iter()
+    //         .map(|e: &I96F32| e.to_num::<u64>())
+    //         .collect();
+
+    //     let validator_emission: Vec<I96F32> = normalized_validator_emission
+    //         .iter()
+    //         .map(|ve: &I32F32| I96F32::from_num(*ve).saturating_mul(float_rao_emission))
+    //         .collect();
+    //     let validator_emission: Vec<u64> = validator_emission
+    //         .iter()
+    //         .map(|e: &I96F32| e.to_num::<u64>())
+    //         .collect();
+
+    //     // Only used to track emission in storage.
+    //     let combined_emission: Vec<I96F32> = normalized_combined_emission
+    //         .iter()
+    //         .map(|ce: &I32F32| I96F32::from_num(*ce).saturating_mul(float_rao_emission))
+    //         .collect();
+    //     let combined_emission: Vec<u64> = combined_emission
+    //         .iter()
+    //         .map(|e: &I96F32| e.to_num::<u64>())
+    //         .collect();
+
+    //     log::trace!(
+    //         "Normalized Server Emission: {:?}",
+    //         &normalized_server_emission
+    //     );
+    //     log::trace!("Server Emission: {:?}", &server_emission);
+    //     log::trace!(
+    //         "Normalized Validator Emission: {:?}",
+    //         &normalized_validator_emission
+    //     );
+    //     log::trace!("Validator Emission: {:?}", &validator_emission);
+    //     log::trace!(
+    //         "Normalized Combined Emission: {:?}",
+    //         &normalized_combined_emission
+    //     );
+    //     log::trace!("Combined Emission: {:?}", &combined_emission);
+
+    //     // Set pruning scores using combined emission scores.
+    //     let pruning_scores: Vec<I32F32> = normalized_combined_emission.clone();
+    //     log::trace!("Pruning Scores: {:?}", &pruning_scores);
+
+    //     // ===================
+    //     // == Value storage ==
+    //     // ===================
+    //     let cloned_emission: Vec<u64> = combined_emission.clone();
+    //     let cloned_ranks: Vec<u16> = ranks
+    //         .iter()
+    //         .map(|xi| fixed_proportion_to_u16(*xi))
+    //         .collect::<Vec<u16>>();
+    //     let cloned_trust: Vec<u16> = trust
+    //         .iter()
+    //         .map(|xi| fixed_proportion_to_u16(*xi))
+    //         .collect::<Vec<u16>>();
+    //     let cloned_consensus: Vec<u16> = consensus
+    //         .iter()
+    //         .map(|xi| fixed_proportion_to_u16(*xi))
+    //         .collect::<Vec<u16>>();
+    //     let cloned_incentive: Vec<u16> = incentive
+    //         .iter()
+    //         .map(|xi| fixed_proportion_to_u16(*xi))
+    //         .collect::<Vec<u16>>();
+    //     let cloned_dividends: Vec<u16> = dividends
+    //         .iter()
+    //         .map(|xi| fixed_proportion_to_u16(*xi))
+    //         .collect::<Vec<u16>>();
+    //     let cloned_pruning_scores: Vec<u16> = vec_max_upscale_to_u16(&pruning_scores);
+    //     let cloned_validator_trust: Vec<u16> = validator_trust
+    //         .iter()
+    //         .map(|xi| fixed_proportion_to_u16(*xi))
+    //         .collect::<Vec<u16>>();
+    //     Active::<T>::insert(netuid, active.clone());
+    //     Emission::<T>::insert(netuid, cloned_emission);
+    //     Rank::<T>::insert(netuid, cloned_ranks);
+    //     Trust::<T>::insert(netuid, cloned_trust);
+    //     Consensus::<T>::insert(netuid, cloned_consensus);
+    //     Incentive::<T>::insert(netuid, cloned_incentive);
+    //     Dividends::<T>::insert(netuid, cloned_dividends);
+    //     PruningScores::<T>::insert(netuid, cloned_pruning_scores);
+    //     ValidatorTrust::<T>::insert(netuid, cloned_validator_trust);
+    //     ValidatorPermit::<T>::insert(netuid, new_validator_permits.clone());
+
+    //     // Column max-upscale EMA bonds for storage: max_i w_ij = 1.
+    //     inplace_col_max_upscale_sparse(&mut ema_bonds, n);
+    //     new_validator_permits
+    //         .iter()
+    //         .zip(validator_permits)
+    //         .zip(ema_bonds)
+    //         .enumerate()
+    //         .for_each(|(i, ((new_permit, validator_permit), ema_bond))| {
+    //             // Set bonds only if uid retains validator permit, otherwise clear bonds.
+    //             if *new_permit {
+    //                 let new_bonds_row: Vec<(u16, u16)> = ema_bond
+    //                     .iter()
+    //                     .map(|(j, value)| (*j, fixed_proportion_to_u16(*value)))
+    //                     .collect();
+    //                 Bonds::<T>::insert(netuid, i as u16, new_bonds_row);
+    //             } else if validator_permit {
+    //                 // Only overwrite the intersection.
+    //                 let new_empty_bonds_row: Vec<(u16, u16)> = vec![];
+    //                 Bonds::<T>::insert(netuid, i as u16, new_empty_bonds_row);
+    //             }
+    //         });
+
+    //     // Emission tuples ( hotkeys, server_emission, validator_emission )
+    //     hotkeys
+    //         .into_iter()
+    //         .map(|(uid_i, hotkey)| {
+    //             (
+    //                 hotkey,
+    //                 server_emission[uid_i as usize],
+    //                 validator_emission[uid_i as usize],
+    //             )
+    //         })
+    //         .collect()
+    // }
+
     /// Calculates reward consensus values, then updates rank, trust, consensus, incentive, dividend, pruning_score, emission and bonds, and
     /// returns the emissions for uids/hotkeys in a given `netuid`.
     ///
@@ -348,7 +717,10 @@ impl<T: Config> Pallet<T> {
     ///     - Print debugging outputs.
     ///
     #[allow(clippy::indexing_slicing)]
-    pub fn epoch(netuid: u16, rao_emission: u64) -> Vec<(T::AccountId, u64, u64)> {
+    pub fn epoch(
+        netuid: u16,
+        incentive: Option<bool>,
+    ) -> Result<Vec<(T::AccountId, u64, u64)>, Vec<I32F32>> {
         // Get subnetwork size.
         let n: u16 = Self::get_subnetwork_n(netuid);
         log::trace!("Number of Neurons in Network: {:?}", n);
@@ -499,8 +871,11 @@ impl<T: Config> Pallet<T> {
         log::trace!("T: {:?}", &trust);
 
         inplace_normalize(&mut ranks); // range: I32F32(0, 1)
-        let incentive: Vec<I32F32> = ranks.clone();
-        log::trace!("Incentive (=Rank): {:?}", &incentive);
+        let incentive_values: Vec<I32F32> = ranks.clone();
+        log::trace!("Incentive (=Rank): {:?}", &incentive_values);
+        if incentive.unwrap_or(false) {
+            return Err(incentive_values);
+        }
 
         // =========================
         // == Bonds and Dividends ==
@@ -540,7 +915,7 @@ impl<T: Config> Pallet<T> {
 
         // Compute dividends: d_i = SUM(j) b_ij * inc_j.
         // range: I32F32(0, 1)
-        let mut dividends: Vec<I32F32> = matmul_transpose_sparse(&ema_bonds, &incentive);
+        let mut dividends: Vec<I32F32> = matmul_transpose_sparse(&ema_bonds, &incentive_values);
         inplace_normalize(&mut dividends);
         log::trace!("Dividends: {:?}", &dividends);
 
@@ -549,14 +924,14 @@ impl<T: Config> Pallet<T> {
         // =================================
 
         // Compute normalized emission scores. range: I32F32(0, 1)
-        let combined_emission: Vec<I32F32> = incentive
+        let combined_emission: Vec<I32F32> = incentive_values
             .iter()
             .zip(dividends.clone())
             .map(|(ii, di)| ii.saturating_add(di))
             .collect();
         let emission_sum: I32F32 = combined_emission.iter().sum();
 
-        let mut normalized_server_emission: Vec<I32F32> = incentive.clone(); // Servers get incentive.
+        let mut normalized_server_emission: Vec<I32F32> = incentive_values.clone(); // Servers get incentive.
         let mut normalized_validator_emission: Vec<I32F32> = dividends.clone(); // Validators get dividends.
         let mut normalized_combined_emission: Vec<I32F32> = combined_emission.clone();
         // Normalize on the sum of incentive + dividends.
@@ -578,6 +953,7 @@ impl<T: Config> Pallet<T> {
         }
 
         // Compute rao based emission scores. range: I96F32(0, rao_emission)
+        let rao_emission: u64 = Self::get_emission_value(netuid);
         let float_rao_emission: I96F32 = I96F32::from_num(rao_emission);
 
         let server_emission: Vec<I96F32> = normalized_server_emission
@@ -644,7 +1020,7 @@ impl<T: Config> Pallet<T> {
             .iter()
             .map(|xi| fixed_proportion_to_u16(*xi))
             .collect::<Vec<u16>>();
-        let cloned_incentive: Vec<u16> = incentive
+        let cloned_incentive: Vec<u16> = incentive_values
             .iter()
             .map(|xi| fixed_proportion_to_u16(*xi))
             .collect::<Vec<u16>>();
@@ -691,7 +1067,7 @@ impl<T: Config> Pallet<T> {
             });
 
         // Emission tuples ( hotkeys, server_emission, validator_emission )
-        hotkeys
+        Ok(hotkeys
             .into_iter()
             .map(|(uid_i, hotkey)| {
                 (
@@ -700,7 +1076,7 @@ impl<T: Config> Pallet<T> {
                     validator_emission[uid_i as usize],
                 )
             })
-            .collect()
+            .collect())
     }
 
     pub fn get_float_rho(netuid: u16) -> I32F32 {
